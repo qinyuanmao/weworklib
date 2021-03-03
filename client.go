@@ -7,11 +7,15 @@ package weworklib
 import "C"
 import (
 	"encoding/json"
+	"fmt"
 	"unsafe"
+
+	"github.com/wenzhenxi/gorsa"
 )
 
 type Client struct {
-	ptr C.WeWorkFinanceSdk_t
+	ptr         *C.WeWorkFinanceSdk_t
+	privateKeys map[uint32]string
 }
 
 /**
@@ -21,7 +25,7 @@ type Client struct {
  * @param [in]  secret      聊天内容存档的Secret，可以在企业微信管理端--管理工具--聊天内容存档查看
  *
  */
-func NewClient(corpId string, corpSecret string) (*Client, error) {
+func NewClient(corpId string, corpSecret string, privateKeys map[uint32]string) (*Client, error) {
 	ptr := C.NewSdk()
 	corpIdC := C.CString(corpId)
 	corpSecretC := C.CString(corpSecret)
@@ -31,11 +35,12 @@ func NewClient(corpId string, corpSecret string) (*Client, error) {
 	}()
 	retC := C.Init(ptr, corpIdC, corpSecretC)
 	ret := int(retC)
-	if ret == 0 {
+	if ret != 0 {
 		return nil, NewSDKErr(ret)
 	}
 	return &Client{
-		ptr: ptr,
+		ptr:         ptr,
+		privateKeys: privateKeys,
 	}, nil
 }
 
@@ -72,12 +77,15 @@ func (this *Client) GetChatData(seq uint64, limit uint64, proxy string, passwd s
 		return nil, NewSDKErr(ret)
 	}
 	buf := this.GetContentFromSlice(chatSlice)
-	var data []ChatData
+	var data ChatDataResponse
 	err := json.Unmarshal(buf, &data)
 	if err != nil {
 		return nil, err
 	}
-	return data, nil
+	if data.IsError() {
+		return nil, fmt.Errorf("get message from GetChatData failed: %s", data.ErrMsg)
+	}
+	return data.ChatDataList, nil
 }
 
 /**
@@ -86,86 +94,28 @@ func (this *Client) GetChatData(seq uint64, limit uint64, proxy string, passwd s
 * @param [in]  encrypt_msg, getchatdata返回的encrypt_chat_msg
 * @return msg, 解密的消息明文
  */
-func (this *Client) DecryptData(encryptKey string, encryptMsg string) (Message, error) {
-	encryptKeyC := C.CString(encryptKey)
-	encryptMsgC := C.CString(encrpytMsg)
+func (this *Client) DecryptData(keyVersion uint32, encryptKey string, encryptMsg string) (map[string]interface{}, error) {
+	decodeKey, err := gorsa.PriKeyDecrypt(encryptKey, this.privateKeys[keyVersion])
+	if err != nil {
+		return nil, fmt.Errorf("decode encryptKey(%s) failed: %v", encryptKey, err)
+	}
+	encryptKeyC := C.CString(string(decodeKey))
+	encryptMsgC := C.CString(encryptMsg)
 	msgSlice := C.NewSlice()
 	defer func() {
 		C.free(unsafe.Pointer(encryptKeyC))
 		C.free(unsafe.Pointer(encryptMsgC))
 		C.FreeSlice(msgSlice)
 	}()
-
-	retC := C.DecryptData(encryptKey, encryptMsg, msgSlice)
+	retC := C.DecryptData(encryptKeyC, encryptMsgC, msgSlice)
 	ret := int(retC)
 	if ret != 0 {
 		return nil, NewSDKErr(ret)
 	}
-	buf := this.GetContentFromSlice(slice)
-	var baseMessage BaseMessage
-	err := json.Unmarshal(buf, &baseMessage)
-	if err != nil {
-		return nil, err
-	}
-	var msg Message
-	if baseMessage.Action == SWITCH_ACTION {
-		msg = SwitchMessage{}
-	} else {
-		switch baseMessage.MsgType {
-		case TEXT_MSG:
-			msg = TextMessage{}
-		case IMG_MSG:
-			msg = ImageMessage{}
-		case REVOKE_MSG:
-			msg = RevokeMessage{}
-		case AGREE_MSG, DISAGREE_MSG:
-			msg = AgreeMessage{}
-		case VOICE_MSG:
-			msg = VoiceMessage{}
-		case VIDEO_MSG:
-			msg = VideoMessage{}
-		case CARD_MSG:
-			msg = CardMessage{}
-		case LOC_MSG:
-			msg = LocationMessage{}
-		case EMOTION_MSG:
-			msg = EmotionMessage{}
-		case FILE_MSG:
-			msg = FileMessage{}
-		case LINK_MSG:
-			msg = LinkMessage{}
-		case WEAPP_MSG:
-			msg = WeappMessage{}
-		case CHATRECORD_MSG:
-			msg = ChatRecordMessage{}
-		case TODO_MSG:
-			msg = TodoMessage{}
-		case VOTE_MSG:
-			msg = VoteMessage{}
-		case COLLECT_MSG:
-			msg = CollectMessage{}
-		case REDPACKET_MSG:
-			msg = RedpacketMessage{}
-		case MEETING_MSG:
-			msg = MeetingMessage{}
-		case DOC_MSG:
-			msg = DocMessage{}
-		case MARKDOWN_MSG:
-			msg = MarkdownMessage{}
-		case NEWS_MSG:
-			msg = NewsMessage{}
-		case CALENDAR_MSG:
-			msg = CalendarMessage{}
-		case MIXED_MSG:
-			msg = MixedMessage{}
-		case MEETING_VOICE_CALL_MSG:
-			msg = MeetingVoiceCallMessage{}
-		case VOIP_DOC_SHARE_MSG:
-			msg = VoipDocShareMessage{}
-		}
-	}
-	err = json.Unmarshal(buf, &msg)
-	return msg, err
+	buf := this.GetContentFromSlice(msgSlice)
+	mp := make(map[string]interface{})
+	err = json.Unmarshal(buf, &mp)
+	return mp, err
 }
 
 /**
@@ -202,11 +152,11 @@ func (this *Client) GetMediaData(indexBuf string, sdkFileId string, proxy string
 	}
 	return &MediaData{
 		OutIndexBuf: C.GoString(C.GetOutIndexBuf(mediaDataC)),
-		Data:        C.GoBytes(C.GetData(mediaDataC), int(C.GetDataLen(mediaDataC))),
+		Data:        C.GoBytes(unsafe.Pointer(C.GetData(mediaDataC)), C.GetDataLen(mediaDataC)),
 		IsFinish:    int(C.IsMediaDataFinish(mediaDataC)) == 1,
 	}, nil
 }
 
 func (this *Client) GetContentFromSlice(slice *C.struct_Slice_t) []byte {
-	return C.GoBytes(C.GetContentFromSlice(slice), int(C.GetSliceLen(slice)))
+	return C.GoBytes(unsafe.Pointer(C.GetContentFromSlice(slice)), C.GetSliceLen(slice))
 }
