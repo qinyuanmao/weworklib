@@ -49,7 +49,7 @@ func (this *Client) Free() {
 	C.DestroySdk(this.ptr)
 }
 
-func (this *Client) GetChatList(seq uint64, limit uint64, proxy string, password string, timeout int) (targetReq uint64, messages []CommonMessage, err error) {
+func (this *Client) GetChatList(seq uint64, limit uint64, proxy string, password string, timeout int) (messages []CommonMessage, err error) {
 	chatDatas, err := this.GetChatData(seq, limit, proxy, password, timeout)
 	if err != nil {
 		return
@@ -71,11 +71,6 @@ func (this *Client) GetChatList(seq uint64, limit uint64, proxy string, password
 			message.MediaData = mediaData.Data
 		}
 		messages = append(messages, *message)
-	}
-	if len(chatDatas) > 0 {
-		targetReq = chatDatas[len(chatDatas)-1].Seq
-	} else {
-		targetReq = seq
 	}
 	return
 }
