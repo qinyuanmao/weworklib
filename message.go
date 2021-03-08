@@ -125,6 +125,7 @@ func (this BaseMessage) ID() string {
 
 type CommonMessage struct {
 	BaseMessage
+	Seq       uint64
 	MediaData []byte
 	Content   map[string]interface{}
 }

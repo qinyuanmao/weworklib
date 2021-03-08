@@ -67,6 +67,7 @@ func (this *Client) GetChatList(seq uint64, limit uint64, proxy string, password
 				err = fmt.Errorf("获取图片资源文件失败：%v", getMediaErr)
 				return
 			}
+			message.Seq = chatData.Seq
 			message.MediaData = mediaData.Data
 		}
 		messages = append(messages, *message)
