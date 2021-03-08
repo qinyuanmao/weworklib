@@ -49,7 +49,7 @@ func (this *Client) Free() {
 	C.DestroySdk(this.ptr)
 }
 
-func (this *Client) GetChatList(seq uint64, limit uint64, proxy string, password string, timeout int) (messages []CommonMessage, err error) {
+func (this *Client) GetChatList(seq uint64, limit uint64, proxy string, password string, timeout int) (targetReq uint64, messages []CommonMessage, err error) {
 	chatDatas, err := this.GetChatData(seq, limit, proxy, password, timeout)
 	if err != nil {
 		return
@@ -61,7 +61,7 @@ func (this *Client) GetChatList(seq uint64, limit uint64, proxy string, password
 			err = fmt.Errorf("解析消息内容失败：%v", decryptErr)
 			return
 		}
-		if funk.Contains([]MessageType{}, message.MsgType) {
+		if funk.Contains([]MessageType{IMG_MSG, VOICE_MSG, VIDEO_MSG, EMOTION_MSG, FILE_MSG, MEETING_MSG, VOIP_DOC_SHARE_MSG}, message.MsgType) {
 			mediaData, getMediaErr := this.GetMediaData("", message.Content["sdkfileid"].(string), proxy, password, timeout)
 			if getMediaErr != nil {
 				err = fmt.Errorf("获取图片资源文件失败：%v", getMediaErr)
@@ -70,6 +70,11 @@ func (this *Client) GetChatList(seq uint64, limit uint64, proxy string, password
 			message.MediaData = mediaData.Data
 		}
 		messages = append(messages, *message)
+	}
+	if len(chatDatas) > 0 {
+		targetReq = chatDatas[len(chatDatas)-1].Seq
+	} else {
+		targetReq = seq
 	}
 	return
 }
