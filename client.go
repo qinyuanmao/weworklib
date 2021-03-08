@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"unsafe"
 
+	"github.com/thoas/go-funk"
 	"github.com/wenzhenxi/gorsa"
 )
 
@@ -46,6 +47,31 @@ func NewClient(corpId string, corpSecret string, privateKeys map[uint32]string) 
 
 func (this *Client) Free() {
 	C.DestroySdk(this.ptr)
+}
+
+func (this *Client) GetChatList(seq uint64, limit uint64, proxy string, password string, timeout int) (messages []CommonMessage, err error) {
+	chatDatas, err := this.GetChatData(seq, limit, proxy, password, timeout)
+	if err != nil {
+		return
+	}
+	messages = make([]CommonMessage, 0)
+	for _, chatData := range chatDatas {
+		message, decryptErr := this.DecryptData(chatData.PublickeyVer, chatData.EncryptRandomKey, chatData.EncryptChatMsg)
+		if decryptErr != nil {
+			err = fmt.Errorf("解析消息内容失败：%v", decryptErr)
+			return
+		}
+		if funk.Contains([]MessageType{}, message.MsgType) {
+			mediaData, getMediaErr := this.GetMediaData("", message.Content["sdkfileid"].(string), proxy, password, timeout)
+			if getMediaErr != nil {
+				err = fmt.Errorf("获取图片资源文件失败：%v", getMediaErr)
+				return
+			}
+			message.MediaData = mediaData.Data
+		}
+		messages = append(messages, *message)
+	}
+	return
 }
 
 /**
@@ -94,7 +120,8 @@ func (this *Client) GetChatData(seq uint64, limit uint64, proxy string, passwd s
 * @param [in]  encrypt_msg, getchatdata返回的encrypt_chat_msg
 * @return msg, 解密的消息明文
  */
-func (this *Client) DecryptData(keyVersion uint32, encryptKey string, encryptMsg string) (map[string]interface{}, error) {
+func (this *Client) DecryptData(keyVersion uint32, encryptKey string, encryptMsg string) (message *CommonMessage, err error) {
+	message = new(CommonMessage)
 	decodeKey, err := gorsa.PriKeyDecrypt(encryptKey, this.privateKeys[keyVersion])
 	if err != nil {
 		return nil, fmt.Errorf("decode encryptKey(%s) failed: %v", encryptKey, err)
@@ -113,9 +140,9 @@ func (this *Client) DecryptData(keyVersion uint32, encryptKey string, encryptMsg
 		return nil, NewSDKErr(ret)
 	}
 	buf := this.GetContentFromSlice(msgSlice)
-	mp := make(map[string]interface{})
-	err = json.Unmarshal(buf, &mp)
-	return mp, err
+	err = json.Unmarshal(buf, message)
+	err = json.Unmarshal(buf, &message.Content)
+	return message, err
 }
 
 /**

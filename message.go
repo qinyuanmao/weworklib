@@ -123,6 +123,12 @@ func (this BaseMessage) ID() string {
 	return this.MsgId
 }
 
+type CommonMessage struct {
+	BaseMessage
+	MediaData []byte
+	Content   map[string]interface{}
+}
+
 type TextMessage struct {
 	BaseMessage
 	Content string `json:"content,omitempty"` // 消息内容。

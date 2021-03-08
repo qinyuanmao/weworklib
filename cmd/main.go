@@ -21,22 +21,13 @@ func main() {
 		log.Fatalf("init wework client failed: %v", err)
 	}
 	defer client.Free()
-	chatDatas, err := client.GetChatData(0, 100, "", "", 30)
+	messages, err := client.GetChatList(0, 100, "", "", 30)
 	if err != nil {
-		log.Fatalf("get chat data failed: %v", err)
+		log.Fatalf("获取消息内容异常: %v", err)
 	}
-	for _, chatData := range chatDatas {
-		mp, e := client.DecryptData(chatData.PublickeyVer, chatData.EncryptRandomKey, chatData.EncryptChatMsg)
-		if e != nil {
-			log.Fatal(e.Error())
-		}
-		fmt.Println(mp["msgid"])
-		for key, value := range mp {
-			fmt.Printf("%s: %v\n", key, value)
-		}
-		fmt.Println()
-	}
+	fmt.Println(messages)
 }
+
 func loadConfig(path string) (err error) {
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(path)
