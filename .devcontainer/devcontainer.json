@@ -8,10 +8,37 @@
 	"dockerFile": "../Dockerfile",
 	// Set *default* container specific settings.json values on container create.
 	"settings": {
-		"terminal.integrated.shell.linux": null
+		"terminal.integrated.shell.linux": "/bin/bash",
+		"go.toolsManagement.checkForUpdates": "off",
+		"go.gopath": "/go",
+		"go.goroot": "/usr/local/go",
+		"go.formatTool": "goimports",
+		"go.useCodeSnippetsOnFunctionSuggest": true,
+		"go.lintOnSave": "workspace",
+		"go.docsTool": "gogetdoc",
+		"go.useCodeSnippetsOnFunctionSuggestWithoutType": true,
+		"workbench.editor.enablePreview": false,
+		"[go]": {
+			"editor.snippetSuggestions": "none",
+			"editor.formatOnSave": true,
+			"editor.codeActionsOnSave": {
+				"source.organizeImports": true
+			}
+		},
+		"go.useLanguageServer": true,
+		"go.alternateTools": {
+			"go-langserver": "gopls"
+		},
+		"gopls": {
+			"usePlaceholders": true,
+			"completeUnimported": true,
+			"deepCompletion": true
+		},
 	},
 	// Add the IDs of extensions you want installed when the container is created.
-	"extensions": []
+	"extensions": [
+		"golang.go"
+	]
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 	// Uncomment the next line to run commands after the container is created - for example installing curl.
