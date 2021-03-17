@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/thoas/go-funk"
 	"github.com/wenzhenxi/gorsa"
 )
 
@@ -61,8 +60,8 @@ func (this *Client) GetChatList(seq uint64, limit uint64, proxy string, password
 			err = fmt.Errorf("解析消息内容失败：%v", decryptErr)
 			return
 		}
-		if funk.Contains([]MessageType{IMG_MSG, VOICE_MSG, VIDEO_MSG, EMOTION_MSG, FILE_MSG, MEETING_MSG, VOIP_DOC_SHARE_MSG}, message.MsgType) {
-			mediaData, getMediaErr := this.GetMediaData("", message.Content["sdkfileid"].(string), proxy, password, timeout)
+		if v, exists := message.Content["sdkfileid"]; exists {
+			mediaData, getMediaErr := this.GetMediaData("", v.(string), proxy, password, timeout)
 			if getMediaErr != nil {
 				err = fmt.Errorf("获取图片资源文件失败：%v", getMediaErr)
 				return
