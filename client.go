@@ -141,14 +141,11 @@ func (this *Client) DecryptData(keyVersion uint32, encryptKey string, encryptMsg
 	}
 	buf := this.GetContentFromSlice(msgSlice)
 	err = json.Unmarshal(buf, message)
-	err = json.Unmarshal(buf, &message.Content)
-	delete(message.Content, "msgid")
-	delete(message.Content, "action")
-	delete(message.Content, "from")
-	delete(message.Content, "tolist")
-	delete(message.Content, "roomid")
-	delete(message.Content, "msgtime")
-	delete(message.Content, "msgtype")
+	var messageContentMap = make(map[string]interface{})
+	err = json.Unmarshal(buf, &messageContentMap)
+	if v, has := messageContentMap[string(message.MsgType)]; has {
+		message.Content = v.(map[string]interface{})
+	}
 	return message, err
 }
 

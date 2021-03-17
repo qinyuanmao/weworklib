@@ -21,11 +21,15 @@ func main() {
 		log.Fatalf("init wework client failed: %v", err)
 	}
 	defer client.Free()
-	messages, err := client.GetChatList(0, 100, "", "", 30)
+	messages, err := client.GetChatList(0, 1000, "", "", 30)
 	if err != nil {
 		log.Fatalf("获取消息内容异常: %v", err)
 	}
-	fmt.Println(messages)
+	for _, message := range messages {
+		if message.Content != nil {
+			fmt.Println(message.Content)
+		}
+	}
 }
 
 func loadConfig(path string) (err error) {
