@@ -16,4 +16,4 @@
 
 .DS_Store
 *.pem
-/config
+# /config

@@ -1,0 +1,6 @@
+enterprise_wechat:
+  crop_id: <CROP ID>
+  crop_secret: <CROP SECRET>
+  private_pems:
+    - '/workspaces/weworklib/pem/rsa_private_key_version_1.pem'
+    - '/workspaces/weworklib/pem/rsa_private_key_version_2.pem'
